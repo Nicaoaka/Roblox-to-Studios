@@ -1,0 +1,6 @@
+/.venv
+/indexed_parts.csv
+/queued_parts.csv
+/sandbox.py
+/testing_stuff
+/__pycache__
