@@ -1,11 +1,20 @@
-import pprint
-import winsound
-import threading
-import text_parser
-import pytesseract
+import pytesseract  # OCR (image -> Noisy text)
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-, '
-# alphanumeric with , .-
+# pytesseract accepted chars: alphanumeric with , .-
+
+import text_parser  # Regex (Noisy text -> data)
+
+
+import pprint       # debug
+import winsound     # built-in windows sounds
+import threading    # async sounds
+
+
+
+DELIMITER = ";"
+if DELIMITER in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.- ,[](){}":
+    raise ValueError("Invalid Delimiter")
 
 
 
@@ -33,32 +42,43 @@ WINDOWED = (1750, 391, 1940-1750, 825-391)
 REGION = FULL_SCREEN
 
 
+def critical_error(to_print, im=None):
+    print(to_print)
+    winsound.PlaySound("SystemHand", winsound.SND_ALIAS | winsound.SND_ASYNC)
+    if im: im.show()
+
+
 
 def add_new_part():
+
+
+
     # get image of pre-defined region
     im = pyautogui.screenshot(region=REGION) # TODO
-    print()
+
+
 
     # convert to text
-    start_time = time.time()
     text_data: str = pytesseract.image_to_string(im, config=custom_config)
     if not text_data:
-        winsound.PlaySound("SystemHand", winsound.SND_ALIAS | winsound.SND_ASYNC)
-        im.show()
-        print(text_data)
+        critical_error("No text found")
         return True
-    print(f"OCR         {time.time() - start_time} seconds.")
+
+
 
     # parse data
     text_data += "\n" # if text_data doesn't end with a \n, there will be catastrophic backtracking (idk how to fix)
     try:
-        new_part_csv: str = text_parser.parse_oc_image_text(text_data, for_csv=True)
+        json, uncertainties = text_parser.parse_oc_image_text(text_data, for_csv=True)
+        new_part_csv: str = text_parser.to_delimeted(json, uncertainties, DELIMITER)
     except Exception as e:
-        winsound.PlaySound("SystemHand", winsound.SND_ALIAS | winsound.SND_ASYNC)
-        im.show()
+        critical_error(text_data, im)
+        with open("errors.txt", 'a') as f:
+            f.write("START"+text_data+"END\n\n")
         print(text_data)
         print(f"ERROR: {e}")
         return True
+
 
 
     # check that it is actually new
@@ -68,9 +88,9 @@ def add_new_part():
         pprint.pprint(text_parser.parse_oc_image_text(text_data, for_csv=False), indent=4)
         return True # return False would end the hotkey listener
     
-    threading.Thread(target=winsound.Beep, args=(400, 500)).start()
     indexed_parts.add(new_part_csv)
     print(f"ADDED: PART #{len(indexed_parts)}")
+    threading.Thread(target=winsound.Beep, args=(400, 500)).start()
 
     # store to files for future runs
     with open("queued_parts.csv", 'a') as f:
@@ -79,12 +99,30 @@ def add_new_part():
         f.write(new_part_csv)
 
 
+def save_to_file():
+    
+    confirm = ""
+    while confirm != "confirm":
+        filename = input("Enter Filename (.csv will be added): ")
+        filename += ".csv"
+        print(f"Will be named:\n{filename}")
+        confirm = input("Type 'confirm': ")
+
+    save = ""
+    with open("indexed_parts.csv", 'r') as f:
+        save = f.read()
+
+    with open(filename, 'w') as f:
+        f.write(save)
+
+
 from pynput import keyboard
 
 # add hotkeys
 with keyboard.GlobalHotKeys({
-        '<ctrl>+c': False,      # end program
-        '<ctrl>+f': add_new_part,
+        'f': add_new_part,
+        'r': save_to_file,
+        '<ctrl>+c': False,      # EXIT / end program
     }) as h:
     h.join()
 

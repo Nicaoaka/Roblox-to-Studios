@@ -4,14 +4,11 @@ NOTES
 	It is assumed that there are no repeats
 	ALL Script-generated objects are temporary,
 		Persistent after: Copy / Paste Into At Original Locaiton
-	
-	
-	
+
 ]]
 
 
-
-
+SAME_SIDE_AS_FEATURED_1 = false
 
 
 
@@ -108,7 +105,6 @@ local function decodeCSV(csvLines)
 	return decoded -- Return the fully parsed CSV data as a table of tables (2D array)
 end
 
-
 -- Table{string}
 local parts = decodeCSV(parts_csv)
 
@@ -116,7 +112,7 @@ local parts = decodeCSV(parts_csv)
 
 _=[[ Place The Parts (in Workspace/folders) ]]
 
-local function placePart(data)
+for i, data in parts do
 	
 	-- Default values for each field
 	local defaults = {
@@ -127,9 +123,9 @@ local function placePart(data)
 		0,
 		Enum.SurfaceType["Studs"],
 		0,
-		0, 0, 0,
-		0, 0, 0,
-		0, 0, 0,
+		0, 0, 0, -- position
+		1, 1, 1, -- size
+		0, 0, 0, -- orientation
 		Enum.PartType["Block"]
 	}
 	local fieldNames = {
@@ -142,12 +138,16 @@ local function placePart(data)
 		'Transparency',
 		'Position_X', 'Position_Y', 'Position_Z',
 		'Size_X', 'Size_Y', 'Size_Z',
-		'Rotation_X', 'Rotation_Y', 'Rotation_Z',
+		'Orientation_X', 'Orientation_Y', 'Orientation_Z',
 		'Shape'
 	}
 	
 	local allCertain = true
 	local part = Instance.new("Part")
+	if data[19] == 0 then
+		part = Instance.new("TrussPart")
+		print("Placing Truss")
+	end
 	part.Name = "Part"
 
 	-- Function to validate and return the correct value
@@ -157,7 +157,7 @@ local function placePart(data)
 		else
 			allCertain = false
 			local script = Instance.new("Script")
-			script.Name = fieldNames[index] .. " = " .. value
+			script.Name = fieldNames[index] .. " = '" .. value .."'"
 			script.Parent = part
 			return defaults[index] -- Return default value
 		end
@@ -166,14 +166,14 @@ local function placePart(data)
 	local function validateEnum(index, value, enum)
 		local enumNames = {}
 		-- Check if value is a key in enum
-		for _, enumItem in ipairs(Enum.PartType:GetEnumItems()) do
+		for _, enumItem in ipairs(enum:GetEnumItems()) do
 			if value == enumItem.Name  then
 				return enum[value]
 			end
 		end
 		allCertain = false
 		local script = Instance.new("Script")
-		script.Name = fieldNames[index] .. " = " .. value
+		script.Name = fieldNames[index] .. " = '" .. value .."'"
 		script.Parent = part
 		return defaults[index] -- Return default value
 	end
@@ -198,8 +198,24 @@ local function placePart(data)
 	part.RightSurface = surfaceType
 
 	part.Transparency = validateType(9, data[9], "number")
+	
+	
+	
+	_=[[ OC to Studios ]]
+	_={	[[SAME SIDE Featured 1]],
+		-1,  1,  1,		[[position]],
+		 1,  1,  1,		[[size]],
+		 1,  1,  1,		[[orientation]],
+	}
+	_={ [[OPPOSITE SIDE Featured 1]],
+		-1,  1,  1,		[[position]],
+		1,  1,  1,		[[size]],
+		1,  -1,  1,		[[orientation]],
+	}
+
+	
 	part.Position = Vector3.new(
-		validateType(10, data[10], "number"),
+		validateType(10, data[10], "number") * -1,
 		validateType(11, data[11], "number"),
 		validateType(12, data[12], "number")
 	)
@@ -208,12 +224,33 @@ local function placePart(data)
 		validateType(14, data[14], "number"),
 		validateType(15, data[15], "number")
 	)
-	part.Rotation = Vector3.new(
-		validateType(16, data[16], "number"),
-		validateType(17, data[17], "number"),
-		validateType(18, data[18], "number")
-	)
-	part.Shape = validateEnum(19, data[19], Enum.PartType)
+	
+	-- for wedges / cornerwedge
+	local function flipOrientation(n)
+		if n > 0 then
+			return n - 180
+		else
+			return n + 180
+		end
+	end
+
+	if SAME_SIDE_AS_FEATURED_1 then
+		part.Orientation = Vector3.new(
+			validateType(16, data[16], "number"),
+			validateType(17, data[17], "number"),
+			validateType(18, data[18], "number")
+		)
+	else
+		part.Orientation = Vector3.new(
+			validateType(16, data[16], "number"),
+			flipOrientation(validateType(17, data[17], "number")),
+			validateType(18, data[18], "number")
+		)
+	end
+	
+	if data[19] ~= 0 then -- truss has shape = 0 (int)
+		part.Shape = validateEnum(19, data[19], Enum.PartType)
+	end
 
 	part.Archivable = true
 	part.Anchored = true
@@ -225,11 +262,7 @@ local function placePart(data)
 		part.Parent = checkFolder
 	end
 
-	print("Placed object at:", part.Position)
-end
-
-for _, part in parts do
-	placePart(part)
+	--print("Placed Part# " .. i)
 end
 
 

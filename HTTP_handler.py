@@ -1,7 +1,7 @@
-from typing import Union
 from fastapi import FastAPI
 
-
+# Run with:
+# fastapi dev .\HTTP_handler.py
 
 app = FastAPI()
 
@@ -22,7 +22,7 @@ def read_item():
 """
 {
     [
-        "<.csv string>",
+        "<Part_Data>,<Uncertainties>"
         ...
     ]
 }
