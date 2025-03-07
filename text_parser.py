@@ -30,6 +30,19 @@ MATERIAL = {
     "CeramicTiles", "ClayRoofTiles", "RoofShingles", "Leather", "Plaster", "Rubber"
 }
 
+# trusses will have a Style unlike all other parts
+TRUSS_INSTANCE_NAME = "TrussPart"
+TRUSS_STYLES = {
+    "alternating": "AlternatingSupports",   # Alternating
+    "bridgestyle": "BridgeStyleSupports",   # Bridge Style
+    "nosupports": "NoSupports",             # No Supports
+
+    # LOOSER
+    "alt": "AlternatingSupports",          # Alternating
+    "bri": "BridgeStyleSupports",          # Bridge Style
+    "osu": "NoSupports",                   # No Supports
+}
+
 DEFUALTS = {
     'Instance': "Part",
     'CanCollide': True,
@@ -174,23 +187,12 @@ def parse_image_text(text: str) -> tuple[dict, dict]:
     #   PartType -> Style
     # Note: There isn't a good way to do meshes (they all look the same in properties)
     part_data["Instance"] = DEFUALTS["Instance"] # Default Instance Type
-    if "PartType" in uncertainties.keys():
-        # trusses will have a Style in full-screen
-        TRUSS_STYLES = {
-            "alternating": "AlternatingSupports",   # Alternating
-            "bridgestyle": "BridgeStyleSupports",   # Bridge Style
-            "nosupports": "NoSupports",             # No Supports
-
-            # LOOSER
-            "alte": "AlternatingSupports",          # Alternating
-            "brid": "BridgeStyleSupports",          # Bridge Style
-            "osup": "NoSupports",                   # No Supports
-        }
+    if uncertainties.get("PartType"):
         for style in TRUSS_STYLES.keys():
-            if style in data["Rest"]:
+            if style in data["Rest"].lower():
                 del part_data["PartType"]
                 del uncertainties["PartType"]
-                part_data["Instance"] = "TrussPart"
+                part_data["Instance"] = TRUSS_INSTANCE_NAME
                 part_data["Style"] = TRUSS_STYLES[style]
                 break
 

@@ -18,9 +18,8 @@ SAVE_TO_SEPARATE_FILE = 'v'
 END_PROGRAM = '<ctrl>+c'
 
 DELIMITER: str = ";"
-if DELIMITER in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.- ,[](){}":
+if all([c in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.- ,[](){}" for c in DELIMITER]):
     raise ValueError("Invalid Delimiter")
-
 
 
 
@@ -160,25 +159,5 @@ with keyboard.GlobalHotKeys({
 
 
 
+good_result("-- SETUP READY --")
 
-
-
-
-
-
-
-    # # Use Snip-It (Put in add_new_part())
-    # image_dib = ImageGrab.grabclipboard()
-    # im = convertImageFormat(image_dib, 'PNG')
-
-# ONLY necessary for manual snip-it / clipboard image conversion (MOVE TO TOP)
-# from PIL import ImageGrab, Image
-# import io
-# def convertImageFormat(imgObj, outputFormat="PNG"):
-#     # function by ScottC - https://stackoverflow.com/a/74541605
-#     newImgObj = imgObj
-#     if outputFormat and (imgObj.format != outputFormat):
-#         imageBytesIO = io.BytesIO()
-#         imgObj.save(imageBytesIO, outputFormat)
-#         newImgObj = Image.open(imageBytesIO)
-#     return newImgObj
