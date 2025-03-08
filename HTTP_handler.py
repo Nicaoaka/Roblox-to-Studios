@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 
-# Run with:
-# fastapi dev .\HTTP_handler.py
+# Run this in terminal:
+"""
+fastapi dev .\HTTP_handler.py
+"""
 
 app = FastAPI()
 
@@ -13,7 +15,7 @@ def read_root():
 def read_item():
 
     queued_parts = list()
-    with open("queued_parts.csv", 'r') as f:
+    with open("current/queued_parts.txt", 'r') as f:
         for line in f:
             queued_parts.append(line)
     return queued_parts
@@ -22,7 +24,7 @@ def read_item():
 """
 {
     [
-        "<Part_Data>,<Uncertainties>"
+        <part_data + uncertainties>,
         ...
     ]
 }

@@ -129,7 +129,7 @@ def to_enum(string: str, enum: set[str], field_name: str, uncertainties: dict) -
     uncertainties[field_name] = repr(string)
     return DEFUALTS[field_name]
 
-def to_vector(string: str, size: int, convert_fn, field_name: str, uncertainties: dict) -> tuple[str]:
+def to_vector(string: str, size: int, convert_fn, field_name: str, uncertainties: dict) -> list[str]:
     parts = string.split(',')
     
     if len(parts) < size:
@@ -139,7 +139,8 @@ def to_vector(string: str, size: int, convert_fn, field_name: str, uncertainties
         uncertainties[field_name] = "HIGH "+repr(string)
         parts = parts[:size]
 
-    return tuple(convert_fn(p, f"{field_name}_{i+1}", uncertainties) for i, p in enumerate(parts))
+    return [convert_fn(dimension, f"{field_name}_{i+1}", uncertainties)
+            for i, dimension in enumerate(parts)]
 
 
 FIELD_METADATA = {
@@ -156,7 +157,7 @@ FIELD_METADATA = {
     "PartType":     {"type": "enum", "enum": PARTTYPE},
 }
 
-def parse_image_text(text: str) -> tuple[dict, dict]:
+def parse_image_text(text: str) -> list[dict, dict]:
     text += "\n" # for regex pattern
     regex_match = re.match(pattern, text)
     if not regex_match:

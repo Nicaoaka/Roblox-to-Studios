@@ -10,11 +10,15 @@ custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=abcdefghijklmnopqrs
 
 
 
-SAME_SIDE_AS_FEATURED_1: bool = True
+# BEFORE USING THIS TOOL:
+RED_DOWN_TOWARDS_NEGATIVE: bool = False
+
+
+
 
 # Hotkeys
 ADD_PART = 'f'
-SAVE_TO_SEPARATE_FILE = 'v'
+SAVE_TO_SEPARATE_FILE = '<ctrl>+v'
 END_PROGRAM = '<ctrl>+c'
 
 DELIMITER: str = ";"
@@ -26,11 +30,12 @@ if all([c in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.- ,
 # Load cache
 # Set to prevent duplicates: contains hashes of previously loaded/queued parts
 import time # timing cause curious
-print("Loading indexed_parts.csv Cache")
+print("Loading indexed_parts.txt Cache")
 start_time = time.time()
 indexed_parts: set[str] = set()
-with open("indexed_parts.csv", "r") as f:
+with open("current/indexed_parts.txt", "r") as f:
     for line in f:
+        print(repr(line))
         indexed_parts.add(line)
 print(f"Loaded {len(indexed_parts)} parts in {'{:.6f}'.format(time.time() - start_time)} seconds!")
 del start_time
@@ -64,6 +69,7 @@ def critical_error(to_print, im=None):
 
 
 def add_new_part():
+    start_time = time.time()
 
 
 
@@ -81,19 +87,19 @@ def add_new_part():
 
 
     # parse data
-    json, uncertainties = None
+    json, uncertainties = None, None
     try:
         json, uncertainties = text_parser.parse_image_text(text_data)
     # non match
     except ValueError as e:
         critical_error(f"{text_data}\nERROR: {e}", im)
-        with open("errors.txt", 'a') as f:
+        with open("testing_stuff/errors.txt", 'a') as f:
             f.write("START"+text_data+"END\n\n")
         return True
     # unexpected
     except Exception as e:
         critical_error(f"{text_data}\nERROR: {e}", im)
-        with open("errors.txt", 'a') as f:
+        with open("testing_stuff/errors.txt", 'a') as f:
             f.write("START"+text_data+"END\n\n")
         raise e
 
@@ -101,17 +107,17 @@ def add_new_part():
 
     # Obby Creator fixes
     json["Position"][0] *= -1
-    if SAME_SIDE_AS_FEATURED_1:
+    if RED_DOWN_TOWARDS_NEGATIVE:
         def rotate_180(n):
             return n - 180 if n > 0 else n + 180
         json["Orientation"][1] = rotate_180(json["Orientation"][1])
-    new_part_csv: str = text_parser.to_delimeted(json, uncertainties, DELIMITER)
+    new_part_delimited: str = text_parser.to_delimeted(json, uncertainties, DELIMITER)
 
 
 
     # check that it is actually new
-    if new_part_csv in indexed_parts:
-        message = "-- That part was already added --\n" +\
+    if new_part_delimited in indexed_parts:
+        message = "\n-- That part was already added --\n" +\
             pprint.pformat(json, indent=4) + "\n" +\
             pprint.pformat(uncertainties, indent=4)
         soft_error(message)
@@ -120,12 +126,12 @@ def add_new_part():
 
 
     # store / add to cache
-    indexed_parts.add(new_part_csv)
-    with open("queued_parts.csv", 'a') as f:
-        f.write(new_part_csv)
-    with open("indexed_parts.csv", 'a') as f:
-        f.write(new_part_csv)
-    good_result(f"-- ADDED: PART #{len(indexed_parts)} --")
+    indexed_parts.add(new_part_delimited)
+    with open("current/queued_parts.txt", 'a') as f:
+        f.write(new_part_delimited)
+    with open("current/indexed_parts.txt", 'a') as f:
+        f.write(new_part_delimited)
+    good_result(f"-- ADDED: PART #{len(indexed_parts)} in {time.time() - start_time} seconds --")
 
 
 
@@ -133,16 +139,15 @@ def save_to_file():
     
     confirm = ""
     while confirm != "confirm":
-        filename = input("Enter Filename (.csv will be added): ")
-        filename += ".csv"
+        filename = input("Enter Filename (optionally include filetype): ")
         print(f"Will be named:\n{filename}")
         confirm = input("Type 'confirm': ")
 
     save = ""
-    with open("indexed_parts.csv", 'r') as f:
+    with open("current/indexed_parts.txt", 'r') as f:
         save = f.read()
 
-    with open(filename, 'w') as f:
+    with open("saved_data/"+filename, 'w') as f:
         f.write(save)
 
 
@@ -150,14 +155,17 @@ def save_to_file():
 from pynput import keyboard
 
 # add hotkeys
-with keyboard.GlobalHotKeys({
-        ADD_PART: add_new_part,
-        SAVE_TO_SEPARATE_FILE: save_to_file,
-        END_PROGRAM: False,      # EXIT / end program
-    }) as h:
-    h.join()
+def run():
+    with keyboard.GlobalHotKeys({
+            ADD_PART: add_new_part,
+            SAVE_TO_SEPARATE_FILE: save_to_file,
+            END_PROGRAM: False,      # EXIT / end program
+        }) as h:
+        good_result("-- SETUP READY --")
+        h.join()
 
+def main():
+    run()
 
-
-good_result("-- SETUP READY --")
-
+if __name__ == "__main__":
+    main()

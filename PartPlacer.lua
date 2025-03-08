@@ -1,3 +1,9 @@
+
+
+
+
+
+
 _=[[
 
 NOTES
@@ -6,17 +12,27 @@ NOTES
 	
 ]]
 
-
-
-
 local DELIMITER = ";"
+
+local FLIP = false
+
+_=[[ Debug Tools ]]
+
+local function rotate_180(orientation)
+	return orientation + 180
+end
+local function inverse(n)
+	return -n
+end
+
+
 
 
 
 
 _=[[ Get/Make Temporary Folders ]]
 
-local folderName = "confirmedParts"
+local folderName = "Confirmed"
 local confirmedPartsFolder = workspace:FindFirstChild(folderName)
 if not confirmedPartsFolder then
 	confirmedPartsFolder = Instance.new("Folder")
@@ -31,7 +47,7 @@ if not newPartsFolder then
 	newPartsFolder.Name = folderName
 	newPartsFolder.Parent = workspace
 end
-folderName = "NewPartsCHECK"
+folderName = "CHECK"
 local checkFolder = workspace:FindFirstChild(folderName)
 if not checkFolder then
 	checkFolder = Instance.new("Folder")
@@ -74,7 +90,7 @@ end
 
 local all_part_data = {}
 for _, line in ipairs(delimited_data) do
-
+	line = line:sub(1, -2) -- last two characters are \n
 	-- Correct Type
 	local part_data = {}
 	for _, str in ipairs(split(line, DELIMITER)) do
@@ -123,9 +139,15 @@ for _, part_data in ipairs(all_part_data) do
 	part.Size = Vector3.new(
 		part_data[14], part_data[15], part_data[16]
 	)
-	part.Rotation = Vector3.new(
-		part_data[17], part_data[18], part_data[19]
-	)
+	if FLIP then
+		part.Orientation = Vector3.new(
+			part_data[17], rotate_180(part_data[18]), part_data[19]
+		)
+	else
+		part.Orientation = Vector3.new(
+			part_data[17], part_data[18], part_data[19]
+		)
+	end
 
 	if part_data[1] == "TrussPart" then
 		part.Style = Enum.Style[part_data[20]]

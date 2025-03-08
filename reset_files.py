@@ -1,4 +1,4 @@
-with open("queued_parts.csv", 'w') as f:
+with open("current/queued_parts.txt", 'w') as f:
     pass
-with open("indexed_parts.csv", 'w') as f:
+with open("current/indexed_parts.txt", 'w') as f:
     pass
