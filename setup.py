@@ -11,8 +11,9 @@ custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=abcdefghijklmnopqrs
 
 
 # BEFORE USING THIS TOOL:
-RED_DOWN_TOWARDS_NEGATIVE: bool = False
-
+# Fix bool cast make it input().lower() == "true"
+RED_DOWN_TOWARDS_POSITIVE: bool = bool(input("DOWNward RED axis rotation towards FRONT of obby +POSITIVE: "))
+print("Set to:", RED_DOWN_TOWARDS_POSITIVE)
 
 
 
@@ -107,7 +108,7 @@ def add_new_part():
 
     # Obby Creator fixes
     json["Position"][0] *= -1
-    if RED_DOWN_TOWARDS_NEGATIVE:
+    if RED_DOWN_TOWARDS_POSITIVE:
         def rotate_180(n):
             return n - 180 if n > 0 else n + 180
         json["Orientation"][1] = rotate_180(json["Orientation"][1])

@@ -2,14 +2,14 @@ import re
 pattern =\
 r"""[\s\d.,]*(?P<CanCollide>[a-zA-Z]+)[ \d.,]*?
 [\s\d.,]*(?P<CastShadow>[a-zA-Z]+)[ \d.,]*?
-[\s\D]*?(?P<Color>[A \-\d\.,]+)[ \D]*?
+[\s\D]*?(?P<Color>[AT \-\d\.,]+)[ \D]*?
 [\s\d.,]*(?P<Material>[a-zA-Z]+?) *?[vV]*[ ]*?
-[\s\D]*?(?P<Reflectance>[A \-\d\.,]+)[\s\D]*?
+[\s\D]*?(?P<Reflectance>[AT \-\d\.,]+)[\s\D]*?
 [\s\d.,]*(?P<SurfaceType>[a-zA-Z]+?) *?[vV]*[ ]*?
-[\s\D]*?(?P<Transparency>[A \-\d\.,]+)[\sa-zA-Z]*?
-[\s\D]*?(?P<Position>[A \-\d\.,]+)[\sa-zA-Z]*?
-[\s\D]*?(?P<Size>[A \-\d\.,]+)[\sa-zA-Z]*?
-[\s\D]*?(?P<Orientation>[A \-\d\.,]+)[\sa-zA-Z]*?
+[\s\D]*?(?P<Transparency>[AT \-\d\.,]+)[\sa-zA-Z]*?
+[\s\D]*?(?P<Position>[AT \-\d\.,]+)[\sa-zA-Z]*?
+[\s\D]*?(?P<Size>[AT \-\d\.,]+)[\sa-zA-Z]*?
+[\s\D]*?(?P<Orientation>[AT \-\d\.,]+)[\sa-zA-Z]*?
 [\s,.]*(?P<PartType>[\w]+?)\s*[vV]*[ ,.]*?
 (?P<Rest>[\w\s]*)"""
 
@@ -76,20 +76,22 @@ def to_bool(string: str, field_name: str, uncertainties: dict) -> bool:
     uncertainties[field_name] = repr(string)
     return DEFUALTS[field_name]
 
+
 def to_float(string: str, field_name: str, uncertainties: dict) -> float:
+
     try:
-        return float(string)
+        return round(float(string), 3)
     except Exception: # ValueError / TypeError
         pass
 
     uncertainties[field_name] = repr(string)
 
+    # OCR misinterpretations
+    string = string.replace('A', '-4')
+    string = string.replace('T', '7')
+
     if len(string) == 0:
         return DEFUALTS[field_name]
-    
-    # OCR misinterpretation: "-4" as "A"
-    if string[0] == "A":
-        string = "-4" + string[1:]
 
     # Remove additional decimal points beyond the first valid one
     if string.count(".") >= 2:
@@ -97,19 +99,24 @@ def to_float(string: str, field_name: str, uncertainties: dict) -> float:
         string = string[:first + 1] + string[first + 1:].replace(".", "")
 
     try:
-        return float(string)
+        return round(float(string), 3)
     except Exception: # ValueError
         return DEFUALTS[field_name]
 
 def to_int(string: str, field_name: str, uncertainties: dict) -> int:
+    
     try:
         return int(string)
     except ValueError:
         pass
 
     uncertainties[field_name] = repr(string)
-    
-    string.replace(".", "")
+
+    # OCR misinterpretations
+    string = string.replace('A', '-4')
+    string = string.replace('T', '7')
+    string = string.replace(".", "")
+
     try:
         return int(string)
     except ValueError:
@@ -135,9 +142,14 @@ def to_vector(string: str, size: int, convert_fn, field_name: str, uncertainties
     if len(parts) < size:
         uncertainties[field_name] = "LOW "+repr(string)
         parts += [""] * (size - len(parts))
+
     elif len(parts) > size:
         uncertainties[field_name] = "HIGH "+repr(string)
-        parts = parts[:size]
+        if string[-1] == ',':
+            string  = string[:-1]
+        else:
+            string.replace(',', '.', 1)
+        parts = string.split(',')[:3]
 
     return [convert_fn(dimension, f"{field_name}_{i+1}", uncertainties)
             for i, dimension in enumerate(parts)]
