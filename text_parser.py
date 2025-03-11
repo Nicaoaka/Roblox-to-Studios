@@ -1,28 +1,28 @@
 import re
-pattern =\
+PATTERN =\
 r"""[\s\d.,]*(?P<CanCollide>[a-zA-Z]+)[ \d.,]*?
 [\s\d.,]*(?P<CastShadow>[a-zA-Z]+)[ \d.,]*?
 [\s\D]*?(?P<Color>[AT \-\d\.,]+)[ \D]*?
-[\s\d.,]*(?P<Material>[a-zA-Z]+?) *?[vV]*[ ]*?
+[\s\d.,]*(?P<Material>[\w\d ]+?) *?[vV]*[ ]*?
 [\s\D]*?(?P<Reflectance>[AT \-\d\.,]+)[\s\D]*?
-[\s\d.,]*(?P<SurfaceType>[a-zA-Z]+?) *?[vV]*[ ]*?
+[\s\d.,]*(?P<SurfaceType>[\w\d ]+?) *?[vV]*[ ]*?
 [\s\D]*?(?P<Transparency>[AT \-\d\.,]+)[\sa-zA-Z]*?
 [\s\D]*?(?P<Position>[AT \-\d\.,]+)[\sa-zA-Z]*?
 [\s\D]*?(?P<Size>[AT \-\d\.,]+)[\sa-zA-Z]*?
 [\s\D]*?(?P<Orientation>[AT \-\d\.,]+)[\sa-zA-Z]*?
-[\s,.]*(?P<PartType>[\w]+?)\s*[vV]*[ ,.]*?
-(?P<Rest>[\w\s]*)"""
+[\s,.]*(?P<PartType>[\w\d ]+?) *?[vV]*[ ]*?
+(?P<Rest>[\w\s,\.-]*)"""
 
-PARTTYPE = {
+PARTTYPE: set[str] = {
     "Ball", "Block", "Cylinder", "Wedge", "CornerWedge" # TrussPart (edge case)
 }
 
-SURFACETYPE = {
+SURFACETYPE: set[str] = {
     "Smooth", "Glue", "Weld", "Studs", "Inlet", "Universal", "Hinge", 
     "Motor", "SteppingMotor", "SmoothNoOutlines"
 }
 
-MATERIAL = {
+MATERIAL: set[str] = {
     "Plastic", "SmoothPlastic", "Neon", "Wood", "WoodPlanks", "Marble", "Slate", "Concrete", "Granite",
     "Brick", "Pebble", "Cobblestone", "Rock", "Sandstone", "Basalt", "CrackedLava", "Limestone", "Pavement",
     "CorrodedMetal", "DiamondPlate", "Foil", "Metal", "Grass", "LeafyGrass", "Sand", "Fabric", "Snow", "Mud",
@@ -32,7 +32,7 @@ MATERIAL = {
 
 # trusses will have a Style unlike all other parts
 TRUSS_INSTANCE_NAME = "TrussPart"
-TRUSS_STYLES = {
+TRUSS_STYLES: dict[str: str] = {
     "alternating": "AlternatingSupports",   # Alternating
     "bridgestyle": "BridgeStyleSupports",   # Bridge Style
     "nosupports": "NoSupports",             # No Supports
@@ -67,32 +67,38 @@ DEFUALTS = {
 }
 
 def to_bool(string: str, field_name: str, uncertainties: dict) -> bool:
-    string = string.strip()
-    if "true" in string.lower():
+    # loose comparison
+    if "tru" in string.lower():
         return True
-    elif "false" in string.lower():
+    elif "fal" in string.lower():
         return False
     
     uncertainties[field_name] = repr(string)
     return DEFUALTS[field_name]
 
-
 def to_float(string: str, field_name: str, uncertainties: dict) -> float:
 
-    try:
-        return round(float(string), 3)
-    except Exception: # ValueError / TypeError
-        pass
 
-    uncertainties[field_name] = repr(string)
+    if string[0] == '.':
+        uncertainties[field_name] = repr(string)
+        string = string[1:]
+    else:
+        try:
+            return round(float(string), 3)
+        except Exception: # ValueError / TypeError
+            pass
+        uncertainties[field_name] = repr(string)
 
     # OCR misinterpretations
+    # A -> -4
+    # -A -> --4 -> -4
+    # T -> 7
     string = string.replace('A', '-4')
+    string = string.replace('--', '-')
     string = string.replace('T', '7')
 
     if len(string) == 0:
         return DEFUALTS[field_name]
-
     # Remove additional decimal points beyond the first valid one
     if string.count(".") >= 2:
         first = string.find(".")
@@ -105,10 +111,15 @@ def to_float(string: str, field_name: str, uncertainties: dict) -> float:
 
 def to_int(string: str, field_name: str, uncertainties: dict) -> int:
     
-    try:
-        return int(string)
-    except ValueError:
-        pass
+    if string[0] == '.':
+        uncertainties[field_name] = repr(string)
+        string = string[1:]
+    else:
+        try:
+            return int(string)
+        except Exception: # ValueError / TypeError
+            pass
+        uncertainties[field_name] = repr(string)
 
     uncertainties[field_name] = repr(string)
 
@@ -137,22 +148,31 @@ def to_enum(string: str, enum: set[str], field_name: str, uncertainties: dict) -
     return DEFUALTS[field_name]
 
 def to_vector(string: str, size: int, convert_fn, field_name: str, uncertainties: dict) -> list[str]:
+    string = string.strip()
     parts = string.split(',')
     
     if len(parts) < size:
         uncertainties[field_name] = "LOW "+repr(string)
-        parts += [""] * (size - len(parts))
+        parts = string.split(',') + [""] * (size - len(parts))
 
     elif len(parts) > size:
         uncertainties[field_name] = "HIGH "+repr(string)
+        if string[0] == ',':
+            string  = string[1:]
         if string[-1] == ',':
             string  = string[:-1]
-        else:
-            string.replace(',', '.', 1)
-        parts = string.split(',')[:3]
+        
+        # 1,111,2.222,3.333 -> 1.111,2.222,3.333
+        num_elements = string.count(',') + 1
+        if num_elements > size:
+            string = string.replace(',', '.', 1)
+        
+        num_elements = string.count(',') + 1
+        parts = string.split(',')[:3] + [""] * (size - num_elements)
 
-    return [convert_fn(dimension, f"{field_name}_{i+1}", uncertainties)
-            for i, dimension in enumerate(parts)]
+    return [convert_fn(part, f"{field_name}_{i+1}", uncertainties)
+            for i, part in enumerate(parts)]
+
 
 
 FIELD_METADATA = {
@@ -169,9 +189,9 @@ FIELD_METADATA = {
     "PartType":     {"type": "enum", "enum": PARTTYPE},
 }
 
-def parse_image_text(text: str) -> list[dict, dict]:
+def parse_image_text(text: str) -> tuple[dict, dict]:
     text += "\n" # for regex pattern
-    regex_match = re.match(pattern, text)
+    regex_match = re.match(PATTERN, text)
     if not regex_match:
         raise ValueError("Failed to parse input text: " + repr(text))
     data = regex_match.groupdict()
@@ -200,21 +220,24 @@ def parse_image_text(text: str) -> list[dict, dict]:
     #   PartType -> Style
     # Note: There isn't a good way to do meshes (they all look the same in properties)
     part_data["Instance"] = DEFUALTS["Instance"] # Default Instance Type
+    part_data["Name"] = part_data["PartType"]
     if uncertainties.get("PartType"):
+        part_data["Name"] = "Unknown"
         for style in TRUSS_STYLES.keys():
             if style in data["Rest"].lower():
                 del part_data["PartType"]
                 del uncertainties["PartType"]
                 part_data["Instance"] = TRUSS_INSTANCE_NAME
+                part_data["Name"] = TRUSS_INSTANCE_NAME
                 part_data["Style"] = TRUSS_STYLES[style]
                 break
+    part_data["Uncertainties"] = uncertainties
+    return part_data
 
-    return part_data, uncertainties
 
-
-
-def to_delimeted(json_data: dict, uncertainties: dict, delimter: str):
+def to_delimeted(json_data: dict, delimter: str):
     part_data = [
+        json_data["Name"],
         json_data["Instance"],
         json_data["CanCollide"],
         json_data["CastShadow"],
@@ -230,7 +253,7 @@ def to_delimeted(json_data: dict, uncertainties: dict, delimter: str):
     ]
     
     part_data = list(map(str, part_data))
-    uncertainties = [f"{field_name} = {recieve}" for field_name, recieve in uncertainties.items()]
+    uncertainties = [f"{field_name} = {recieve}" for field_name, recieve in json_data["Uncertainties"].items()]
     fields = part_data + uncertainties
     if any([delimter in field for field in fields]):
         raise ValueError(f"Delimeter: '{delimter}' cannot be used.")

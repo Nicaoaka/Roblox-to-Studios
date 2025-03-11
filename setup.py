@@ -1,44 +1,41 @@
-import pprint       # debug
+
+import pprint       # print json / debug
 import winsound     # built-in windows sounds
 import threading    # async sounds
 
-import text_parser  # Regex (Noisy text -> data)
+import pyautogui # region screenshot (GET image)
 import pytesseract  # OCR (image -> Noisy text)
+import text_parser  # Regex (Noisy text -> data)
+
+from pynput import mouse, keyboard
+keyboard_controller = keyboard.Controller()
+mouse_controller = mouse.Controller()
+
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-, '
-# pytesseract accepted chars: alphanumeric with , .-
+custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789,.-'
+# pytesseract accepted chars: [\w,.-]
 
 
+from config import * # Constants
 
-# BEFORE USING THIS TOOL:
-# Fix bool cast make it input().lower() == "true"
-RED_DOWN_TOWARDS_POSITIVE: bool = input("DOWNward RED axis rotation towards FRONT of obby +POSITIVE: ").lower() == "true"
-print("Set to:", RED_DOWN_TOWARDS_POSITIVE)
 
-AUTO_DELETE = input("Use AutoDelete: ").lower() == "true"
-print("Set to:", AUTO_DELETE)
-
-# Hotkeys
-ADD_PART = 'f'
-SAVE_TO_SEPARATE_FILE = '<ctrl>+v'
-END_PROGRAM = '<ctrl>+c'
-
-DELIMITER: str = ";"
-if all([c in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.- ,[](){}" for c in DELIMITER]):
-    raise ValueError("Invalid Delimiter")
 
 print(
-f"""
-Hotkeys:
-add part:       {ADD_PART}
-save to file:   {SAVE_TO_SEPARATE_FILE}
-END:            {END_PROGRAM}
-"""
-)
+f"""{"\n" * 4}
+-- Configuration --
 
-confirm = ""
-while confirm != "confirm":
-    confirm = input("Type 'confirm' to confirm: ")
+Downward red axis rotation towards front
+is +Positive: {RED_DOWN_TOWARDS_POSITIVE}
+is -Negative: {not RED_DOWN_TOWARDS_POSITIVE}
+
+Auto Delete Mode: {AUTO_DELETE}
+Auto Select Mode: {AUTO_SELECT}
+
+HOTKEYS:
+Add part:   {ADD_PART}
+EXIT:       {EXIT}
+{"\n" * 4}""")
+input("Press enter to continue")
 
 
 
@@ -50,33 +47,31 @@ start_time = time.time()
 indexed_parts: set[str] = set()
 with open("current/indexed_parts.txt", "r") as f:
     for line in f:
-        print(repr(line))
         indexed_parts.add(line)
-print(f"Loaded {len(indexed_parts)} parts in {'{:.6f}'.format(time.time() - start_time)} seconds!")
+starting_part_count = len(indexed_parts)
+print(f"Loaded {starting_part_count} parts in {'{:.6f}'.format(time.time() - start_time)} seconds!")
 del start_time
 
+# clear previous session's temporary 'new' data
+with open("current/new.txt", 'w') as f:
+    f.write("")
 
 
-import pyautogui # region screenshot
-# while True:
-#     print(pyautogui.position())
-#     time.sleep(1)
-# (top_left x, top_left y, width, height)
-FULL_SCREEN = (1744, 361, 1930-1744, 878-361)
-WINDOWED = (1750, 361, 1940-1750, 856-361)
-REGION = FULL_SCREEN
 
-def good_result(to_print, im=None):
+def winBeep(frequency: int, duration: int):
+    threading.Thread(target=winsound.Beep, args=(frequency, duration), daemon=False).start()
+
+def good_notif(to_print, im=None):
     print(to_print)
-    threading.Thread(target=winsound.Beep, args=(400, 500)).start()
+    winBeep(700,450)
     if im: im.show()
 
-def soft_error(to_print, im=None):
+def ok_notif(to_print, im=None):
     print(to_print)
     winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS | winsound.SND_ASYNC)
     if im: im.show()
 
-def critical_error(to_print, im=None):
+def error_notif(to_print, im=None):
     print(to_print)
     winsound.PlaySound("SystemHand", winsound.SND_ALIAS | winsound.SND_ASYNC)
     if im: im.show()
@@ -85,7 +80,8 @@ def critical_error(to_print, im=None):
 
 def add_new_part():
     start_time = time.time()
-
+    winBeep(500, 300)
+    
 
 
     # get image of pre-defined region
@@ -96,46 +92,45 @@ def add_new_part():
     # convert to text
     text_data: str = pytesseract.image_to_string(im, config=custom_config)
     if not text_data:
-        critical_error("No text found", im)
+        error_notif("No text found", im)
         return True
 
 
 
     # parse data
-    json, uncertainties = None, None
+    json_data = None
     try:
-        json, uncertainties = text_parser.parse_image_text(text_data)
+        json_data = text_parser.parse_image_text(text_data)
     # non match
     except ValueError as e:
-        critical_error(f"{text_data}\nERROR: {e}", im)
-        with open("testing_stuff/errors.txt", 'a') as f:
-            f.write("START"+text_data+"END\n\n")
+        error_notif(f"{text_data}\nERROR: {e}", im)
+        with open("testing_stuff/non_match.txt", 'a') as f:
+            f.write(f"{repr(text_data)}\n")
         return True
     # unexpected
     except Exception as e:
-        critical_error(f"{text_data}\nERROR: {e}", im)
-        with open("testing_stuff/errors.txt", 'a') as f:
-            f.write("START"+text_data+"END\n\n")
+        error_notif(f"{text_data}\nERROR: {e}", im)
+        with open("testing_stuff/text_parser_errors.txt", 'a') as f:
+            f.write(f"{repr(text_data)}\n")
         raise e
 
 
 
     # Obby Creator fixes
-    json["Position"][0] *= -1
+    json_data["Position"][0] *= -1
     if RED_DOWN_TOWARDS_POSITIVE:
         def rotate_180(n):
             return n - 180 if n > 0 else n + 180
-        json["Orientation"][1] = rotate_180(json["Orientation"][1])
-    new_part_delimited: str = text_parser.to_delimeted(json, uncertainties, DELIMITER)
+        json_data["Orientation"][1] = rotate_180(json_data["Orientation"][1])
+    new_part_delimited: str = text_parser.to_delimeted(json_data, DELIMITER)
 
 
 
     # check that it is actually new
     if new_part_delimited in indexed_parts:
         message = "\n-- That part was already added --\n" +\
-            pprint.pformat(json, indent=4) + "\n" +\
-            pprint.pformat(uncertainties, indent=4)
-        soft_error(message)
+            pprint.pformat(json_data, indent=4)
+        ok_notif(message)
         return True # return False would end the hotkey listener
     
 
@@ -146,41 +141,38 @@ def add_new_part():
         f.write(new_part_delimited)
     with open("current/indexed_parts.txt", 'a') as f:
         f.write(new_part_delimited)
+    with open("current/new.txt", 'a') as f:
+        f.write(new_part_delimited)
 
+
+
+    # On-completion
     if AUTO_DELETE:
-        pyautogui.press('delete')
+        keyboard_controller.tap(keyboard.Key.delete)
+    if AUTO_SELECT:
+        time.sleep(0.3)
+        mouse_controller.click(mouse.Button.left)
         
-    good_result(f"-- ADDED: PART #{len(indexed_parts)} in {time.time() - start_time} seconds --")
+    print(f"-- ADDED: PART #{len(indexed_parts)} in {time.time() - start_time} seconds --")
 
 
 
-def save_to_file():
-    
-    confirm = ""
-    while confirm != "confirm":
-        filename = input("Enter Filename (optionally include filetype): ")
-        print(f"Will be named:\n{filename}")
-        confirm = input("Type 'confirm': ")
-
-    save = ""
-    with open("current/indexed_parts.txt", 'r') as f:
-        save = f.read()
-
-    with open("saved_data/"+filename, 'w') as f:
-        f.write(save)
+def exit_program():
+    import sys
+    winBeep(500,750)
+    print("-- Exitted program --")
+    print(f"Added {len(indexed_parts) - starting_part_count} parts this session.")
+    sys.exit()
 
 
-
-from pynput import keyboard
 
 # add hotkeys
 def run():
     with keyboard.GlobalHotKeys({
-            ADD_PART: add_new_part,
-            SAVE_TO_SEPARATE_FILE: save_to_file,
-            END_PROGRAM: False,      # EXIT / end program
-        }) as h:
-        good_result("-- SETUP READY --")
+            ADD_PART: lambda: threading.Thread(target=add_new_part, daemon=True).start(),
+            EXIT: exit_program,      # EXIT / end program
+    }) as h:
+        good_notif("-- SETUP READY --")
         h.join()
 
 def main():
