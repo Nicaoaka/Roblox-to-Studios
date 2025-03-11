@@ -78,8 +78,7 @@ def to_bool(string: str, field_name: str, uncertainties: dict) -> bool:
 
 def to_float(string: str, field_name: str, uncertainties: dict) -> float:
 
-
-    if string[0] == '.':
+    if string and string[0] == '.':
         uncertainties[field_name] = repr(string)
         string = string[1:]
     else:
@@ -111,7 +110,7 @@ def to_float(string: str, field_name: str, uncertainties: dict) -> float:
 
 def to_int(string: str, field_name: str, uncertainties: dict) -> int:
     
-    if string[0] == '.':
+    if string and string[0] == '.':
         uncertainties[field_name] = repr(string)
         string = string[1:]
     else:

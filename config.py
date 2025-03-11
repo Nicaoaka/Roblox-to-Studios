@@ -13,7 +13,7 @@ WINDOWED = ScreenRegion(1750, 361, 1940 - 1750, 856 - 361)
 REGION = FULL_SCREEN
 
 # --- Hotkeys (Direct Variables) ---
-ADD_PART = '<ctrl>+f'
+ADD_PART = 'f'
 EXIT = '<ctrl>+x'
 
 # --- Axis Configuration ---
