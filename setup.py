@@ -12,10 +12,11 @@ custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=abcdefghijklmnopqrs
 
 # BEFORE USING THIS TOOL:
 # Fix bool cast make it input().lower() == "true"
-RED_DOWN_TOWARDS_POSITIVE: bool = bool(input("DOWNward RED axis rotation towards FRONT of obby +POSITIVE: "))
+RED_DOWN_TOWARDS_POSITIVE: bool = input("DOWNward RED axis rotation towards FRONT of obby +POSITIVE: ").lower() == "true"
 print("Set to:", RED_DOWN_TOWARDS_POSITIVE)
 
-
+AUTO_DELETE = input("Use AutoDelete: ").lower() == "true"
+print("Set to:", AUTO_DELETE)
 
 # Hotkeys
 ADD_PART = 'f'
@@ -25,6 +26,19 @@ END_PROGRAM = '<ctrl>+c'
 DELIMITER: str = ";"
 if all([c in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.- ,[](){}" for c in DELIMITER]):
     raise ValueError("Invalid Delimiter")
+
+print(
+f"""
+Hotkeys:
+add part:       {ADD_PART}
+save to file:   {SAVE_TO_SEPARATE_FILE}
+END:            {END_PROGRAM}
+"""
+)
+
+confirm = ""
+while confirm != "confirm":
+    confirm = input("Type 'confirm' to confirm: ")
 
 
 
@@ -132,6 +146,10 @@ def add_new_part():
         f.write(new_part_delimited)
     with open("current/indexed_parts.txt", 'a') as f:
         f.write(new_part_delimited)
+
+    if AUTO_DELETE:
+        pyautogui.press('delete')
+        
     good_result(f"-- ADDED: PART #{len(indexed_parts)} in {time.time() - start_time} seconds --")
 
 

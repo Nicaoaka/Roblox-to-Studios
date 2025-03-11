@@ -1,6 +1,4 @@
 /.venv
-/indexed_parts.csv
-/queued_parts.csv
 /sandbox.py
 /__pycache__
 /saved_data
