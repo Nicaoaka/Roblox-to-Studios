@@ -1,6 +1,6 @@
 # Roblox-to-Studios
 
-Terminal-based tool for scraping Roblox Obby Creator part properties via screenshot+OCR to transfer obbies to Roblox Studios.
+Console-based tool for scraping Roblox Obby Creator part properties via screenshot+OCR to transfer obbies to Roblox Studios.
 
 Built on Python 3.13.1 in Windows.
 
