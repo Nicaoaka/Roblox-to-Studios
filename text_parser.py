@@ -1,4 +1,5 @@
 import re
+
 PATTERN =\
 r"""[\s\d.,]*(?P<CanCollide>[a-zA-Z]+)[ \d.,]*?
 [\s\d.,]*(?P<CastShadow>[a-zA-Z]+)[ \d.,]*?
@@ -32,7 +33,7 @@ MATERIAL: set[str] = {
 
 # trusses will have a Style unlike all other parts
 TRUSS_INSTANCE_NAME = "TrussPart"
-TRUSS_STYLES: dict[str: str] = {
+TRUSS_STYLES: dict[str, str] = {
     "alternating": "AlternatingSupports",   # Alternating
     "bridgestyle": "BridgeStyleSupports",   # Bridge Style
     "nosupports": "NoSupports",             # No Supports
@@ -188,7 +189,7 @@ FIELD_METADATA = {
     "PartType":     {"type": "enum", "enum": PARTTYPE},
 }
 
-def parse_image_text(text: str) -> tuple[dict, dict]:
+def parse_image_text(text: str) -> dict[str, str|dict|list]:
     text += "\n" # for regex pattern
     regex_match = re.match(PATTERN, text)
     if not regex_match:
@@ -199,7 +200,6 @@ def parse_image_text(text: str) -> tuple[dict, dict]:
     part_data = dict()
     uncertainties = dict()
     for field in FIELD_METADATA.keys():
-
         match(FIELD_METADATA[field]["type"]):
             case "bool":
                 part_data[field] = to_bool(data[field], field, uncertainties)
@@ -212,7 +212,6 @@ def parse_image_text(text: str) -> tuple[dict, dict]:
                 size = FIELD_METADATA[field]["size"]
                 convert_fn = FIELD_METADATA[field]["convert_fn"]
                 part_data[field] = to_vector(data[field], size, convert_fn, field, uncertainties)
-    
 
     # Truss edge case
     #   Instance
@@ -234,7 +233,7 @@ def parse_image_text(text: str) -> tuple[dict, dict]:
     return part_data
 
 
-def to_delimeted(json_data: dict, delimter: str):
+def to_delimeted(json_data: dict, delimter: str) -> str:
     part_data = [
         json_data["Name"],
         json_data["Instance"],

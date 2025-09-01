@@ -2,6 +2,7 @@ import time
 import text_parser
 import json
 from pprint import pprint
+from random import randint, choice, random
 
 def time_it(func):
     def wrapper(*args, **kwargs):
@@ -11,7 +12,6 @@ def time_it(func):
         return result
     return wrapper
 
-from random import randint, choice, random
 # doesn't include A, T, 1,111 edge cases
 def randfloat():
     return str(choice([1,-1]) * round(random() * 1000, 3))
@@ -32,23 +32,22 @@ def random_text():
     ])
 
 @time_it
-def generate_random_parts(count=10, file='current/queued_parts.txt'):
+def generate_random_parts(count=10, file='test'):
     all_data = list()
+    all_data_del = list()
+
     for _ in range(count):
         part_data = text_parser.parse_image_text(random_text())
+        all_data.append(part_data)
         delimited_part_data = text_parser.to_delimeted(part_data, ';')
-        all_data.append(delimited_part_data)
+        all_data_del.append(delimited_part_data)
 
-    with open(file, 'w') as f:
-        # json.dump(all_data, f, sort_keys=False, indent=4)
-        f.writelines(all_data)
+    with open(file+'.json', 'w') as f:
+        json.dump(all_data, f, sort_keys=False, indent=4)
+    with open(file+'.csv', 'w') as f:
+        f.writelines(all_data_del)
 
+    pprint(all_data, indent=4, sort_dicts=False)
 
-
-
-
-
-
-
-
+generate_random_parts()
 

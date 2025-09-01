@@ -14,14 +14,9 @@ local DELIMITER = ";"
 
 
 
-warn("ALL folder and parts placed will disappear on Stopping the session.")
-print("\tSelect all folders/parts you wish to keep and 'Copy' then 'Paste Into At Original Location'")
-
-
-
 _=[[ Debug Tools ]]
 
-local FLIP = false
+local DEBUG_FLIP = false
 local function rotate_180(orientation)
 	return orientation + 180
 end
@@ -90,8 +85,8 @@ end
 
 local all_part_data = {}
 for _, line in ipairs(delimited_data) do
-	line = line:sub(1, -2) -- last two characters are \n
-	-- Correct Type
+	
+	-- Correct Types
 	local part_data = {}
 	for _, str in ipairs(split(line, DELIMITER)) do
 		-- boolean
@@ -115,6 +110,7 @@ end
 _=[[ Place The Parts (in Workspace/folders) ]]
 
 for _, part_data in ipairs(all_part_data) do
+	
 	local part = Instance.new(part_data[2])
 	part.CanCollide = part_data[3]
 	part.CastShadow = part_data[4]
@@ -139,7 +135,7 @@ for _, part_data in ipairs(all_part_data) do
 	part.Size = Vector3.new(
 		part_data[15], part_data[16], part_data[17]
 	)
-	if FLIP then
+	if DEBUG_FLIP then
 		part.Orientation = Vector3.new(
 			part_data[18], rotate_180(part_data[19]), part_data[20]
 		)
@@ -168,8 +164,8 @@ for _, part_data in ipairs(all_part_data) do
 			script.Parent = part
 		end
 	end
-
-	print("Placed object at:", part.Position)
-
 end
 
+print("Placed " .. #all_part_data .. " parts!")
+warn("ALL folder and parts placed will disappear on Stopping the session.")
+warn("\tSelect all folders/parts you wish to keep and 'Copy' then 'Paste Into At Original Location'")
