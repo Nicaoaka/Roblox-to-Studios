@@ -5,7 +5,7 @@ _=[[
 
 NOTES
 	ALL Script-generated objects are temporary.
-		They become Persistent after: Copy -> Paste Into At Original Locaiton
+		They become Persistent after: Copy -> Paste Into At Original Location
 	This script belongs in the Roblox Studio Place (Workspace or ServerScriptService)
 
 ]]
